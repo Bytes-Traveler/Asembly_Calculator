@@ -1,6 +1,6 @@
 ; =========================================
 ; ui.asm
-; Salida por pantalla
+; Screen output
 ; =========================================
 
 %include "../include/syscall.inc"
@@ -20,8 +20,8 @@ section .text
 
 ; -----------------------------------------
 ; ui_print_text
-; rdi = puntero a texto
-; rsi = longitud
+; rdi = text pointer
+; rsi = length
 ; -----------------------------------------
 ui_print_text:
     WRITE STDOUT, rdi, rsi
@@ -29,7 +29,7 @@ ui_print_text:
 
 ; -----------------------------------------
 ; ui_print_error
-; rdi = codigo error
+; rdi = error code
 ; -----------------------------------------
 ui_print_error:
     cmp rdi, ERR_OVERFLOW
@@ -54,10 +54,10 @@ ui_print_error:
 
 ; -----------------------------------------
 ; ui_print_int
-; rdi = int64 con signo
+; rdi = signed int64
 ; -----------------------------------------
 ui_print_int:
-    sub rsp, 32              ; buffer temporal
+    sub rsp, 32              ; temporary buffer
     mov rsi, rsp
     call int_to_string
     mov rdx, rax
@@ -67,10 +67,10 @@ ui_print_int:
     ret
 
 ; -----------------------------------------
-; Conversión entero → string
-; rdi = valor
+; Integer conversion → string
+; rdi = value
 ; rsi = buffer
-; salida: rax = longitud
+; salida: rax = lenght
 ; -----------------------------------------
 int_to_string:
     mov rax, rdi
