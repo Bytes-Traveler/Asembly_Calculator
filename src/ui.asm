@@ -16,6 +16,7 @@ section .data
     err_overflow db "Error: overflow", 10
     err_divzero  db "Error: division by zero", 10
     err_format   db "Error: invalid format", 10
+    newline db 10
 
 section .text
 
@@ -72,6 +73,9 @@ ui_print_int:
     mov rdx, rax             ; rdx = string length
     mov rdi, rsp             ; rdi = buffer pointer
     call ui_print_text       ; Output the number
+    
+    ; Print newline
+    WRITE STDOUT, newline, newline_len
     
     ; Clean up and return
     add rsp, 32
@@ -139,3 +143,4 @@ section .data
     err_overflow_len equ $ - err_overflow
     err_divzero_len  equ $ - err_divzero
     err_format_len   equ $ - err_format
+    newline_len equ $ - newline
