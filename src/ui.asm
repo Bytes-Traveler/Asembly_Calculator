@@ -65,6 +65,8 @@ ui_print_error:
 ; -----------------------------------------
 ui_print_int:
     ; Allocate temporary buffer on stack
+    push rbx
+    push r12
     sub rsp, 32              ; 32-byte buffer for number string
     mov rsi, rsp             ; rsi = buffer pointer
     call int_to_string       ; Convert to string, returns length in rax
@@ -79,6 +81,8 @@ ui_print_int:
     
     ; Clean up and return
     add rsp, 32
+    pop r12
+    pop rbx
     ret
 
 ; -----------------------------------------
@@ -95,20 +99,22 @@ int_to_string:
     
     ; Initialize conversion
     mov rax, rdi             ; rax = value to convert
-    xor rcx, rcx             ; rcx = digit counter
+    xor rcx, rcx             ; rcx = digit counter (NOT including sign)
     mov rbx, 10              ; rbx = base for division
+    xor r9, r9               ; r9 = sign flag (0=positive, 1=negative)
 
     ; Handle negative numbers
     test rax, rax
     jns .positive
 
     ; For negative: output '-' and negate value
-    neg rax
     mov byte [rsi], '-'
     inc rsi
-    inc rcx                  ; Count the '-' character
+    mov r9, 1                ; r9 = 1 (negative)
+    neg rax
 
 .positive:
+.do_convert:
     ; Convert absolute value to decimal digits
     xor rdx, rdx
 
@@ -118,12 +124,13 @@ int_to_string:
     div rbx                  ; rax /= 10, remainder in rdx
     add dl, '0'              ; Convert digit to ASCII
     push rdx                 ; Push digit (will be reversed later)
-    inc rcx
+    inc rcx                  ; Count only the digit, not the sign
     test rax, rax
     jnz .convert             ; Continue while value > 0
 
-    ; Save total length before printing
-    mov r10, rcx             ; r10 = length (including sign)
+    ; Calculate total length (digits + potential sign)
+    mov r10, rcx             ; r10 = digit count
+    add r10, r9              ; r10 += 1 if negative (sign already in buffer)
 
 .print:
     ; Pop digits in reverse order and write to buffer
@@ -134,7 +141,7 @@ int_to_string:
     jnz .print
 
     ; Return total string length
-    mov rax, r10             ; rax = length
+    mov rax, r10             ; rax = length (including sign)
     pop r10
     pop rbx
     ret

@@ -211,7 +211,7 @@ _start:
     test rcx, rcx
     jnz .print_error
 
-    mov rdi, rax
+    movsxd rdi, eax      ; Sign-extend 32-bit result to 64-bit
     call ui_print_int
     jmp .input_loop
 
