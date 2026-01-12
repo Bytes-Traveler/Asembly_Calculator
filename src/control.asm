@@ -1,9 +1,11 @@
 ; =========================================
 ; control.asm
-; Calculator orchestrator
+; Calculator Control Unit
 ; =========================================
+; Orchestrates arithmetic calculations by iterating through
+; operands and applying the specified operator.
 
-%include "../include/constants.inc"
+%include "constants.inc"
 
 extern add_int32
 extern sub_int32
@@ -14,24 +16,42 @@ global control_calculate
 
 section .text
 
+; Function: control_calculate
+; Input:  rdi = pointer to numbers array
+;         rsi = count of numbers (must be >= 2)
+;         rdx = operator character (+, -, *, /)
+; Output: rax = result of calculation
+;         rcx = error code (0=success)
+; Preserves: rbx, r12-r15
 control_calculate:
-    xor rcx, rcx
+    ; Preserve callee-saved registers
+    push rbx
+    push r12
+    xor rcx, rcx             ; Clear error code
 
+    ; Validate minimum operand count
     cmp rsi, 2
     jl .error_format
 
-    mov rbx, rdi
-    mov rax, [rbx]
-    add rbx, 8
-    dec rsi
+    ; Initialize loop:
+    ; Load first number, setup loop counter
+    mov r12, rsi             ; r12 = remaining operand count
+    mov rbx, rdi             ; rbx = pointer to current operand
+    mov rax, [rbx]           ; rax = first number (accumulator)
+    add rbx, 8               ; Advance to next operand
+    dec r12                  ; Decrement remaining count
 
 .loop:
-    cmp rsi, 0
+    ; Loop control: continue while operands remain
+    cmp r12, 0
     je .done
 
+    ; Load operands for current operation
+    ; rdi = accumulator, rsi = next operand
     mov rdi, rax
     mov rsi, [rbx]
 
+    ; Dispatch to appropriate operation
     cmp rdx, '+'
     je .do_add
     cmp rdx, '-'
@@ -41,35 +61,45 @@ control_calculate:
     cmp rdx, '/'
     je .do_div
 
+    ; Invalid operator
     jmp .error_format
 
 .do_add:
+    ; Compute: rax += next_operand
     call add_int32
     jmp .check
 
 .do_sub:
+    ; Compute: rax -= next_operand
     call sub_int32
     jmp .check
 
 .do_mul:
+    ; Compute: rax *= next_operand
     call mul_int32
     jmp .check
 
 .do_div:
+    ; Compute: rax /= next_operand
     call div_int32
     jmp .check
 
 .check:
+    ; Check if operation resulted in error
     test rcx, rcx
-    jnz .done
+    jnz .done             ; Exit if error occurred
 
-    add rbx, 8
-    dec rsi
+    ; Advance to next operand and continue
+    add rbx, 8            ; Move pointer to next number
+    dec r12               ; Decrement remaining count
     jmp .loop
 
 .done:
+    pop r12
+    pop rbx
     ret
 
 .error_format:
     mov rcx, ERR_FORMAT
+    pop rbx
     ret

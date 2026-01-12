@@ -1,11 +1,14 @@
 ; =========================================
 ; main.asm
-; Program Entry Point
+; Program Entry Point - Interactive Calculator
 ; =========================================
+; This module implements the main program loop.
+; It reads user input, parses the operator and operands,
+; and orchestrates the calculation.
 
-%include "../include/syscall.inc"
-%include "../include/macros.inc"
-%include "../include/constants.inc"
+%include "syscalls.inc"
+%include "macros.inc"
+%include "constants.inc"
 
 extern parse_int
 extern control_calculate
@@ -14,54 +17,116 @@ extern ui_print_error
 
 global _start
 
+section .data
+    prompt db "calc> ", 0
+    prompt_len equ $ - prompt
+
 section .bss
-    numbers resq 32          ; hasta 32 números
+    input_buffer resb 256    ; Input buffer for user input
+    numbers resq 32          ; Array to store parsed operands (up to 32)
 
 section .text
 
 _start:
-    ; -------------------------------------
-    ; Get argc y argv
-    ; -------------------------------------
-    mov rbx, rsp
-    mov rdi, [rbx]           ; argc
-    lea rsi, [rbx + 8]       ; argv
+    ; Display input prompt
+    WRITE STDOUT, prompt, prompt_len
 
-    cmp rdi, 4               ; prog op n1 n2 ...
-    jl .format_error
+    ; Read input line from stdin
+    lea rsi, [input_buffer]
+    mov rdx, 256
+    READ STDIN, rsi, rdx
 
-    ; -------------------------------------
-    ; Get operador
-    ; -------------------------------------
-    mov rdx, [rsi + 8]       ; argv[1]
-    mov dl, [rdx]            ; primer char
+    ; Check if read was successful (rax = bytes read)
+    cmp rax, 0
+    jle .format_error
+    
+    ; Replace newline with null terminator
+    dec rax
+    mov byte [input_buffer + rax], 0
 
-    ; -------------------------------------
-    ; Parse números
-    ; -------------------------------------
-    lea r8, [numbers]
-    mov rcx, 2               ; índice argv
-    xor r9, r9               ; contador números
+    ; Initialize parsing state
+    lea rdi, [input_buffer]
+    lea r13, [numbers]        ; Pointer to numbers array
+    xor r9, r9                ; r9 = number count
+    xor r8d, r8d              ; r8 = 0: flag for operator not yet parsed
 
-.parse_loop:
-    cmp rcx, rdi
-    jge .do_calculate
+.main_loop:
+    ; Load current character
+    mov al, [rdi]
+    
+    ; Skip whitespace characters
+    cmp al, 32
+    je .skip_space
 
-    mov rdi, [rsi + rcx*8]   ; argv[i]
+    ; Check for end of string
+    cmp al, 0
+    je .check_ready
+
+    ; If operator not yet parsed (r8 == 0), this character is the operator
+    cmp r8d, 0
+    jne .parse_number
+
+    ; Parse operator: save it and set flag
+    mov r12b, al
+    mov r8d, 1
+    inc rdi
+    jmp .main_loop
+
+.skip_space:
+    inc rdi
+    jmp .main_loop
+
+.parse_number:
+    ; rdi points to a digit or sign
+    ; Extract number: find space or null
+    mov r10, rdi             ; start of number
+
+.find_space:
+    mov al, [rdi]
+    cmp al, 32
+    je .got_number
+    cmp al, 0
+    je .got_number
+    inc rdi
+    jmp .find_space
+
+.got_number:
+    ; rdi points to space or null
+    mov r15, rdi             ; save end position
+    mov al, [rdi]
+    push rax
+    mov byte [rdi], 0
+    
+    ; Parse
+    mov rdi, r10
     call parse_int
 
+    ; Restore WITHOUT clobbering rax
+    pop r11
+    mov [r15], r11b
+    mov rdi, r15
+
+    ; Check error
     test rcx, rcx
     jnz .print_error
 
-    mov [r8], rax
-    add r8, 8
+    ; Store number
+    mov [r13], rax
+    add r13, 8
     inc r9
-    inc rcx
-    jmp .parse_loop
 
-.do_calculate:
+    jmp .main_loop
+
+.check_ready:
+    cmp r8d, 0
+    je .format_error
+
+    cmp r9, 2
+    jl .format_error
+
     lea rdi, [numbers]
     mov rsi, r9
+    movzx rdx, r12b
     call control_calculate
 
     test rcx, rcx

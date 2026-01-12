@@ -1,14 +1,14 @@
 ; ================================
 ; syscalls.inc
-; Syscalls Linux x86-64
+; Linux x86-64 System Calls
 ; ================================
 
-; Syscall numbers
-SYS_READ  equ 0
-SYS_WRITE equ 1
-SYS_EXIT  equ 60
+; Linux x86-64 system call numbers
+SYS_READ  equ 0   ; read() syscall
+SYS_WRITE equ 1   ; write() syscall
+SYS_EXIT  equ 60  ; exit() syscall
 
-; File descriptors
-STDIN  equ 0
-STDOUT equ 1
-STDERR equ 2
+; Standard file descriptors
+STDIN  equ 0  ; Standard input
+STDOUT equ 1  ; Standard output
+STDERR equ 2  ; Standard error

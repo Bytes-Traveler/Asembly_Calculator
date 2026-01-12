@@ -1,116 +1,102 @@
 ; =========================================
 ; parse.asm
-; Conversion from string to signed int32
+; String to Integer Conversion
 ; =========================================
+; Converts a NUL-terminated string to a signed 32-bit integer.
+; Input:  rdi = pointer to string
+; Output: rax = parsed integer (sign-extended to 64-bit)
+;         rcx = error code (0=success, non-zero=error)
+; Preserves: rbx, rsi, r12-r15
 
-%include "../include/constants.inc"
-
-global parse_int32
+%include "constants.inc"
+global parse_int
 
 section .text
 
-; -------------------------------------------------
-; parse_int32
-;
-; Convert an ASCII string to an int32 integer
-;
-; Input:
-;   rsi -> string address
-;   rdx -> string length
-;
-; Output:
-;   rax -> converted value
-;   rcx -> error code
-;          0 = OK
-;          1 = invalid format
-;          2 = overflow / underflow
-; -------------------------------------------------
-parse_int32:
-    xor rax, rax        ; accumulator = 0
-    xor rcx, rcx        ; error = 0
-    xor rbx, rbx        ; index = 0
-    mov r8, 1           ; sign = +1
+parse_int:
+    ; Preserve callee-saved registers used in this function
+    push r8
+    push r10
+    
+    ; Initialize accumulator and state
+    xor eax, eax             ; eax = accumulator (result)
+    xor ecx, ecx             ; ecx = error code (0=success)
+    xor edx, edx             ; edx = character index
+    mov r11d, 1              ; r11d = sign (1=positive, -1=negative)
 
-    ; empty string → error
-    test rdx, rdx
-    jz .error_format
+    ; Check first character (must be digit, '+', or '-')
+    mov cl, byte [rdi]
+    test cl, cl
+    jz .fmt_error            ; Empty string is invalid
 
-    ; ---------------------------------------------
-    ; Detect sign
-    ; ---------------------------------------------
-    mov al, [rsi]
+    ; Handle optional sign prefix
+    cmp cl, '-'
+    je .neg_sign
+    cmp cl, '+'
+    jne .main_loop           ; If not '+', assume it's a digit
+    inc edx                  ; Skip '+' prefix
+    jmp .main_loop
 
-    cmp al, '-'
-    jne .check_plus
-    mov r8, -1
-    inc rbx
-    jmp .check_after_sign
+.neg_sign:
+    ; Handle '-' prefix
+    mov r11d, -1
+    inc edx
 
-.check_plus:
-    cmp al, '+'
-    jne .check_after_sign
-    inc rbx
+.main_loop:
+    ; Load next character
+    mov r10b, byte [rdi + rdx]
+    test r10b, r10b
+    jz .finish               ; Null terminator marks end of string
 
-.check_after_sign:
-    ; only sign without digits → error
-    cmp rbx, rdx
-    jge .error_format
+    ; Verify character is a digit ('0'-'9')
+    mov cl, r10b
+    sub cl, '0'
+    cmp cl, 9
+    ja .fmt_error            ; If cl > 9, not a digit
 
-    ; ---------------------------------------------
-    ; Main conversion loop
-    ; ---------------------------------------------
-.loop:
-    cmp rbx, rdx
-    jge .apply_sign
+    ; Multiply accumulator by 10: eax * 10 = (eax << 3) + (eax << 1)
+    mov r8d, eax
+    shl eax, 3               ; eax *= 8
+    add eax, r8d             ; eax += original
+    add eax, r8d             ; eax += original (now eax = original * 10)
+    movzx r8d, cl            ; cl (digit) -> r8d
+    add eax, r8d             ; Add digit to accumulator
 
-    mov al, [rsi + rbx]
+    ; Check for positive overflow
+    cmp eax, INT32_MAX
+    jg .ovf_error
 
-    ; validate '0'..'9'
-    cmp al, '0'
-    jl .error_format
-    cmp al, '9'
-    jg .error_format
+    ; Continue to next character
+    inc edx
+    jmp .main_loop
 
-    ; convert ASCII to value
-    sub al, '0'
+.finish:
+    ; Apply sign if negative
+    cmp r11d, 1
+    je .success
 
-    ; rax = rax * 10
-    mov r9, rax
-    shl rax, 3              ; rax = rax * 8
-    lea rax, [rax + r9*2]   ; rax = rax * 10
+    neg eax
+    ; Check for negative overflow (INT32_MIN = -2147483648)
+    cmp eax, INT32_MIN
+    jl .ovf_error
 
-    ; add digit
-    movzx r10, al
-    add rax, r10
-
-    ; detect positive overflow before the sign
-    cmp rax, INT32_MAX
-    jg .error_overflow
-
-    inc rbx
-    jmp .loop
-
-    ; ---------------------------------------------
-    ; Apply sign
-    ; ---------------------------------------------
-.apply_sign:
-    cmp r8, 1
-    je .done
-
-    neg rax
-    cmp rax, INT32_MIN
-    jl .error_overflow
-
-.done:
+.success:
+    ; Return with no error
+    xor ecx, ecx
+    pop r10
+    pop r8
     ret
 
-; ---------------------------------------------
-; Errors
-; ---------------------------------------------
-.error_format:
-    mov rcx, 1
+.fmt_error:
+    ; Invalid format (non-digit character)
+    mov ecx, ERR_FORMAT
+    pop r10
+    pop r8
     ret
 
-.error_overflow:
-    mov rcx, 2
+.ovf_error:
+    ; Value overflows 32-bit signed integer range
+    mov ecx, ERR_OVERFLOW
+    pop r10
+    pop r8
     ret

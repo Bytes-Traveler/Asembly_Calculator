@@ -1,10 +1,11 @@
 ; ================================
 ; io.asm
-; Program Input and Output
+; Input/Output Operations
 ; ================================
+; Basic I/O functions for string output and line input.
 
-%include "../include/syscalls.inc"
-%include "../include/macros.inc"
+%include "syscalls.inc"
+%include "macros.inc"
 
 global print_string
 global print_newline
@@ -17,29 +18,26 @@ newline_len equ 1
 section .text
 
 ; --------------------------------
-; Print a string
-; Input:
-;   rsi -> address
-;   rdx -> size
+; print_string: Output a string to stdout
+; Input:  rsi = pointer to string buffer
+;         rdx = length in bytes
 ; --------------------------------
 print_string:
     WRITE STDOUT, rsi, rdx
     ret
 
 ; --------------------------------
-; Print a Line Breack
+; print_newline: Output a newline character
 ; --------------------------------
 print_newline:
     WRITE STDOUT, newline, newline_len
     ret
 
 ; --------------------------------
-; Read a line from stdin
-; Input:
-;   rsi -> buffer
-;   rdx -> maximum size
-; Output:
-;   rax -> bytes read
+; read_line: Read a line from stdin
+; Input:  rsi = pointer to input buffer
+;         rdx = maximum buffer size
+; Output: rax = number of bytes read
 ; --------------------------------
 read_line:
     READ STDIN, rsi, rdx

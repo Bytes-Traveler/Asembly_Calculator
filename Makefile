@@ -6,7 +6,7 @@ NAME    = calc
 ASM     = nasm
 LD      = ld
 
-ASMFLAGS = -f elf64 -g
+ASMFLAGS = -f elf64 -g -Iinclude
 LDFLAGS  =
 
 SRC_DIR   = src
