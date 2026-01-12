@@ -28,6 +28,11 @@ section .bss
 section .text
 
 _start:
+    ; Set up stack alignment: reserve even number of 8-byte values
+    ; so RSP % 16 == 0 before any 'call' instruction
+    push rbp
+    mov rbp, rsp
+    
     ; Display input prompt
     WRITE STDOUT, prompt, prompt_len
 
@@ -62,15 +67,23 @@ _start:
     cmp al, 0
     je .check_ready
 
-    ; If operator not yet parsed (r8 == 0), this character is the operator
-    cmp r8d, 0
-    jne .parse_number
-
-    ; Parse operator: save it and set flag
-    mov r12b, al
-    mov r8d, 1
+    ; State machine:
+    ; r8d = 0: expecting first number
+    ; r8d = 1: expecting operator
+    ; r8d >= 2: expecting more operands (parse as numbers)
+    
+    cmp r8d, 1
+    jne .parse_number_or_op
+    
+    ; If r8d == 1, we're looking for the operator
+    mov r12b, al            ; Save operator
+    mov r8d, 2              ; Move to state 2: expecting more operands
     inc rdi
     jmp .main_loop
+
+.parse_number_or_op:
+    ; If r8d == 0 or r8d >= 2, this is a number
+    jmp .parse_number
 
 .skip_space:
     inc rdi
@@ -114,12 +127,19 @@ _start:
     mov [r13], rax
     add r13, 8
     inc r9
+    
+    ; If this is the first number (r8d == 0), move to state 1
+    cmp r8d, 0
+    jne .continue_parsing
+    mov r8d, 1
 
+.continue_parsing:
     jmp .main_loop
 
 .check_ready:
-    cmp r8d, 0
-    je .format_error
+    ; r8d should be >= 2 (we've seen at least one operator)
+    cmp r8d, 2
+    jl .format_error
 
     cmp r9, 2
     jl .format_error
@@ -146,4 +166,6 @@ _start:
     call ui_print_error
 
 .exit:
+    mov rsp, rbp
+    pop rbp
     EXIT 0

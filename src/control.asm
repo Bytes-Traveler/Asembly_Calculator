@@ -27,6 +27,10 @@ control_calculate:
     ; Preserve callee-saved registers
     push rbx
     push r12
+    
+    ; Maintain 16-byte stack alignment before function calls
+    sub rsp, 8
+    
     xor rcx, rcx             ; Clear error code
 
     ; Validate minimum operand count
@@ -95,11 +99,14 @@ control_calculate:
     jmp .loop
 
 .done:
+    add rsp, 8
     pop r12
     pop rbx
     ret
 
 .error_format:
+    add rsp, 8
     mov rcx, ERR_FORMAT
+    pop r12
     pop rbx
     ret
