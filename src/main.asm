@@ -28,10 +28,6 @@ section .bss
 section .text
 
 _start:
-    ; Set up stack alignment: reserve even number of 8-byte values
-    ; so RSP % 16 == 0 before any 'call' instruction
-    push rbp
-    mov rbp, rsp
 
 .input_loop:
     ; Display input prompt
@@ -67,13 +63,7 @@ _start:
     
     ; Check for 'e' (exit)
     cmp al, 'e'
-    je .check_exit_cmd
-    
-    ; Check for 'q' (quit)
-    cmp al, 'q'
-    je .check_quit_cmd
-    
-    jmp .continue_input
+    jne .continue_input
 
 .check_exit_cmd:
     ; Check if it's "exit" (e-x-i-t)
@@ -90,23 +80,7 @@ _start:
     cmp al, 0
     jne .continue_input
     jmp .exit
-
-.check_quit_cmd:
-    ; Check if it's "quit" (q-u-i-t)
-    mov al, [rdi + 1]
-    cmp al, 'u'
-    jne .continue_input
-    mov al, [rdi + 2]
-    cmp al, 'i'
-    jne .continue_input
-    mov al, [rdi + 3]
-    cmp al, 't'
-    jne .continue_input
-    mov al, [rdi + 4]
-    cmp al, 0
-    jne .continue_input
-    jmp .exit
-
+    
 .continue_input:
     ; Initialize parsing state
     lea rdi, [input_buffer]
@@ -126,23 +100,15 @@ _start:
     cmp al, 0
     je .check_ready
 
-    ; State machine:
-    ; r8d = 0: expecting first number
-    ; r8d = 1: expecting operator
-    ; r8d >= 2: expecting more operands (parse as numbers)
-    
     cmp r8d, 1
-    jne .parse_number_or_op
-    
-    ; If r8d == 1, we're looking for the operator
+    je .parse_operator
+    jmp .parse_number
+
+.parse_operator:
     mov r12b, al            ; Save operator
     mov r8d, 2              ; Move to state 2: expecting more operands
     inc rdi
     jmp .main_loop
-
-.parse_number_or_op:
-    ; If r8d == 0 or r8d >= 2, this is a number
-    jmp .parse_number
 
 .skip_space:
     inc rdi
@@ -150,7 +116,6 @@ _start:
 
 .parse_number:
     ; rdi points to a digit or sign
-    ; Extract number: find space or null
     mov r10, rdi             ; start of number
 
 .find_space:
