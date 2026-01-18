@@ -85,4 +85,14 @@ El proyecto busca implementar una calculadora interactiva en bajo nivel utilizan
 |    rcx    | Código de error                            |
 
 
+## 🚀 Ejecución
 
+Para compilar, limpiar y ejecutar usando el Makefile, utiliza los siguientes comandos:
+
+``` 
+    make        # Compila el programa
+    make clean  # Limpia archivos generados
+    ./calc      # Ejecuta la calculadora
+```
+
+El programa mostrará el prompt calc> y permitirá introducir operaciones. Para salir, se debe escribir exit.
