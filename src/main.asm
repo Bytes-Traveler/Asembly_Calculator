@@ -128,19 +128,16 @@ _start:
     jmp .find_space
 
 .got_number:
-    ; rdi points to space or null
-    mov r15, rdi             ; save end position
-    mov al, [rdi]
-    push rax
-    mov byte [rdi], 0
-    
-    ; Parse
+    mov r15, rdi              ; fin del número
+    mov al, [rdi]             ; guardar delimitador (espacio o 0)
+    mov bl, al                ; bl = delimitador original
+    mov byte [rdi], 0         ; cortar temporalmente
+
     mov rdi, r10
     call parse_int
 
-    ; Restore WITHOUT clobbering rax
-    pop r11
-    mov [r15], r11b
+    ; restaurar delimitador
+    mov [r15], bl
     mov rdi, r15
 
     ; Check error

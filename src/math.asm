@@ -79,19 +79,14 @@ mul_int32:
 ;         rcx = error code (0=success)
 ; -----------------------------------------
 div_int32:
-    xor rcx, rcx             ; Clear error code
-
-    ; Check for division by zero
+    xor rcx, rcx
     cmp esi, 0
     je .div_zero
-
-    ; Perform signed integer division
-    mov eax, edi             ; eax = dividend
-    cdq                      ; Sign-extend eax to edx:eax
-    idiv esi                 ; eax = quotient, edx = remainder
+    mov eax, edi
+    cdq
+    idiv esi
     ret
 
 .div_zero:
-    ; Set error code for division by zero
     mov rcx, ERR_DIVZERO
     ret
