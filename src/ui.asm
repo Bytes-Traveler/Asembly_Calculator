@@ -42,6 +42,7 @@ ui_print_error:
     je .divzero
     cmp rdi, ERR_FORMAT
     je .format
+    WRITE STDOUT, err_format, err_format_len
     ret
 
 .overflow:
@@ -103,6 +104,15 @@ int_to_string:
     mov rbx, 10              ; rbx = base for division
     xor r9, r9               ; r9 = sign flag (0=positive, 1=negative)
 
+    ; Caso especial: 0
+    test rax, rax
+    jnz .check_sign
+    mov byte [rsi], '0'
+    mov rax, 1          ; longitud = 1
+    pop r10
+    pop rbx
+    ret
+
     ; Handle negative numbers
     test rax, rax
     jns .positive
@@ -111,6 +121,14 @@ int_to_string:
     mov byte [rsi], '-'
     inc rsi
     mov r9, 1                ; r9 = 1 (negative)
+    neg rax
+
+.check_sign:
+    test rax, rax
+    jns .positive
+    mov byte [rsi], '-'
+    inc rsi
+    mov r9, 1
     neg rax
 
 .positive:

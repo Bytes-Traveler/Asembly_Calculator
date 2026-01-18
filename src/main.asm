@@ -161,10 +161,14 @@ _start:
     jmp .main_loop
 
 .check_ready:
-    ; r8d should be >= 2 (we've seen at least one operator)
+
+    ; Si ya hay error, no sigas
+    test rcx, rcx
+    jnz .print_error
+
+    ; Validaciones de formato SOLO si no hubo error
     cmp r8d, 2
     jl .format_error
-
     cmp r9, 2
     jl .format_error
 
@@ -183,14 +187,20 @@ _start:
 .print_error:
     mov rdi, rcx
     call ui_print_error
+    xor rcx, rcx
+    xor r8d, r8d
+    xor r9, r9
+    xor r12d, r12d
     jmp .input_loop
 
 .format_error:
     mov rdi, ERR_FORMAT
     call ui_print_error
+    xor rcx, rcx
+    xor r8d, r8d
+    xor r9, r9
+    xor r12d, r12d
     jmp .input_loop
 
 .exit:
-    mov rsp, rbp
-    pop rbp
     EXIT 0

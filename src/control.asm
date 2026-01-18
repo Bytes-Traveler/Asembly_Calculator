@@ -84,9 +84,15 @@ control_calculate:
     jmp .check
 
 .do_div:
-    ; Compute: rax /= next_operand
+    ; Validar divisor == 0 antes de llamar
+    cmp rsi, 0
+    je .div_zero_error
     call div_int32
     jmp .check
+
+.div_zero_error:
+    mov rcx, ERR_DIVZERO
+    jmp .done
 
 .check:
     ; Check if operation resulted in error

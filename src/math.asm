@@ -94,3 +94,4 @@ div_int32:
 .div_zero:
     ; Set error code for division by zero
     mov rcx, ERR_DIVZERO
+    ret
