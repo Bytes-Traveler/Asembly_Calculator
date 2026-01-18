@@ -86,9 +86,15 @@ _start:
     lea rdi, [input_buffer]
     lea r13, [numbers]        ; Pointer to numbers array
     xor r9, r9                ; r9 = number count
-    xor r8d, r8d              ; r8 = 0: flag for operator not yet parsed
+    xor r8d, r8d      
+    xor r12d, r12d          ; operador
+    xor r14d, r14d          ; flag de error del ciclo (0=ok, 1=ya hubo error)        ; r8 = 0: flag for operator not yet parsed
 
 .main_loop:
+    ; Si ya hubo error en este ciclo, abortar parsing
+    test r14d, r14d
+    jnz .abort_cycle
+
     ; Load current character
     mov al, [rdi]
     
@@ -138,18 +144,24 @@ _start:
 
     ; restaurar delimitador
     mov [r15], bl
+
+    ; Avanzar puntero si era espacio
+    cmp bl, 32
+    jne .no_advance
+    lea rdi, [r15 + 1]
+    jmp .after_restore
+
+.no_advance:
     mov rdi, r15
 
-    ; Check error
+.after_restore:
     test rcx, rcx
     jnz .print_error
 
-    ; Store number
     mov [r13], rax
     add r13, 8
     inc r9
     
-    ; If this is the first number (r8d == 0), move to state 1
     cmp r8d, 0
     jne .continue_parsing
     mov r8d, 1
@@ -158,7 +170,10 @@ _start:
     jmp .main_loop
 
 .check_ready:
-
+    ; Si ya hubo error, abortar
+    test r14d, r14d
+    jnz .abort_cycle
+    
     ; Si ya hay error, no sigas
     test rcx, rcx
     jnz .print_error
@@ -182,22 +197,32 @@ _start:
     jmp .input_loop
 
 .print_error:
+    ; Imprimir y marcar flag de error del ciclo
     mov rdi, rcx
     call ui_print_error
+    mov r14d, 1
+    ; Reset de estado
     xor rcx, rcx
     xor r8d, r8d
     xor r9, r9
     xor r12d, r12d
-    jmp .input_loop
+    lea rdi, [input_buffer]
+    jmp .abort_cycle
 
 .format_error:
     mov rdi, ERR_FORMAT
     call ui_print_error
+    mov r14d, 1
     xor rcx, rcx
     xor r8d, r8d
     xor r9, r9
     xor r12d, r12d
-    jmp .input_loop
+    lea rdi, [input_buffer]
+    jmp .abort_cycle
 
+.abort_cycle:
+    ; Cualquier ruta que marque error en el ciclo termina aquí
+    jmp .input_loop
+    
 .exit:
     EXIT 0
